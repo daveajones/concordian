@@ -1,0 +1,77 @@
+<!DOCTYPE html>
+<html>
+  <head>
+    <title>Concordian</title>
+    <link href="css/font-awesome.css" media="all" rel="stylesheet" type="text/css" />    
+    <link href="css/bootstrap.css" media="all" rel="stylesheet" type="text/css" />    
+    <link href="css/concord.css" media="all" rel="stylesheet" type="text/css" />
+    <link href="css/concordian.css" media="all" rel="stylesheet" type="text/css" />    
+    <script src="js/jquery-1.9.1.min.js" type="text/javascript"></script>
+    <script src="js/bootstrap.min.js" type="text/javascript"></script>
+    <script src="js/concord.js" type="text/javascript"></script>  
+    <script src="js/concordUtils.js" type="text/javascript"></script>      
+  </head>
+  <body>
+  <div class="menubar">
+      <button id="btnFileNew">New</button>
+      <input id="open" type="file" class="hide" accept=".opml" value="Open"/><button id="btnFileOpen">Open</button>
+      <input id="save" type="file" class="hide" nwsaveas value="Save"/><button id="btnFileSave">Save</button>
+      <span class="loggedin pull-right"><i class="icon-spin icon-spinner"></i> Logging in...</span>
+  </div>
+    <div class="page container">
+        <div class="content"></div>
+    </div>
+    <!-- Modals -->
+    <div class="s3setup modal hide fade">
+          <div class="modal-header">
+              <button type="button" class="close" data-dismiss="modal" aria-hidden="true">&times;</button>
+              <h3>S3 Login</h3>
+          </div>
+          <div class="modal-body">
+              <div class="error hide text-center"><p>There was an error. Please check your credentials.</p></div>
+              <form class="form-horizontal">
+                  <div class="control-group">
+                      <label class="control-label" for="inputs3Key">Access Key:</label>
+                      <div class="controls">
+                          <input id="inputs3Key" class="s3key" placeholder="S3 Access Key" />
+                      </div>
+                  </div>
+                  <div class="control-group">
+                      <label class="control-label" for="inputs3Secret">Secret Key:</label>
+                      <div class="controls">
+                          <input class="s3secret" id="inputs3Secret" placeholder="S3 Secret Key">
+                      </div>
+                  </div>
+                  <div class="control-group">
+                      <label class="control-label" for="inputs3Region">S3 Region:</label>
+                      <div class="controls">
+                          <select class="s3region" id="inputs3Region">
+                              <option selected value="us-east-1">US-EAST-1</option>
+                              <option value="us-west-1">US-WEST-1</option>
+                          </select>
+                      </div>
+                  </div>
+                  <div class="control-group">
+                      <label class="control-label" for="inputs3Bucket">Bucket:</label>
+                      <div class="controls">
+                          <input class="s3bucket" id="inputs3Bucket" placeholder="S3 Bucket Name">
+                      </div>
+                  </div>
+                  <div class="control-group">
+                      <div class="controls">
+                          <label class="checkbox">
+                              <input class="s3save" type="checkbox"> Remember me
+                          </label>
+                      </div>
+                  </div>
+              </form>
+          </div>
+          <div class="modal-footer">
+              <a href="#" class="btn cancel">Stay Offline</a>
+              <a href="#" class="btn login btn-primary">Login</a>
+          </div>
+      </div>
+    <!-- Initialize -->
+    <script src="js/concordian.js" type="text/javascript"></script>    
+  </body>
+</html>

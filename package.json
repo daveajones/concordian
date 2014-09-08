@@ -1,0 +1,21 @@
+{
+  "main": "index.html",
+  "name": "Concordian",
+  "description": "A standalone version of the Concord outliner.",
+  "version": "0.1.0",
+  "keywords": [ "concord", "outliner", "opml" ],
+  "window": {
+    "title": "Concordian",
+    "icon": "icon.png",
+    "toolbar": true,
+    "frame": true,
+    "width": 960,
+    "height": 600,
+    "position": "center",
+    "min_width": 400,
+    "min_height": 200
+  },
+  "webkit": {
+    "plugin": true
+  }
+}
