@@ -166,11 +166,70 @@ var Concordian = Concordian || {
         });
     },
     s3OpenFileDialog: function(callback) {
+        $('.s3open').modal('show');
+        $('.s3open .modal-header .close').unbind('click').click(function () {
+            $('.s3open').modal('hide');
+        });
+        //Get a list of recent opml files and show them in the dialog
+        Concordian.s3.listObjects({Bucket: AWS.config.credentials.ccbucket, Prefix: Concordian.s3BucketPrefixOutlines}, function (err, data) {
 
-
+        });
+    },
+    s3SaveFile: function (callback) {
+        //Sync the title
+        if (!Concordian.updateOutlineTitle()) {
+            alert('Outlines must have a title.');
+            return false;
+        }
+        //If we had a good title, save the file
+        var opmlFilename = JSON.stringify(opGetTitle()).replace(/\W/g, '');
+        var opmlToSave = opOutlineToXml();
+        var prevmsg = Concordian.changeStatusMessage("Saving to S3...", true);
+        Concordian.s3.putObject({Key: Concordian.s3BucketPrefixOutlines + opmlFilename, Body: opmlToSave}, function () {
+            Concordian.changeStatusMessage(prevmsg, false);
+        });
     },
     generateBucketName: function() {
         return Concordian.appName + "-" + randomValueHex(14);
+    },
+    updateOutlineTitle: function (callback) {
+        var title = "";
+
+        //Get the current title in the text box
+        title = $('input.title').val();
+        currentTitle = title;
+
+        //Update the window caption
+        win.title = Concordian.appName + ' - ' + title;
+
+        //Set the title within the concord object
+        opSetTitle(title);
+
+        if (typeof callback === "function") {
+            callback(title);
+        }
+
+        return (!(title === ""));
+    },
+    newOutline: function (callback) {
+        //Blow away the current outline
+        Concordian.elEditorContainer.remove();
+        generateOutlineStructure('.content', function () {
+            opXmlToOutline(initialOpmltext);
+            currentFilePath = "./outline.opml";
+            currentTitle = "Untitled Outline";
+        });
+        Concordian.updateOutlineTitle();
+    },
+    changeStatusMessage: function (message, spinner) {
+        var msg = "";
+        if (spinner) {
+            msg = '<i class="icon-spin icon-spinner"></i> ';
+        }
+        msg = msg + message;
+        var prev = Concordian.elMenubarLoginStatus().html();
+        Concordian.elMenubarLoginStatus().html(msg);
+        return prev;
     },
     appName: gui.App.manifest.name,
     online: false,
@@ -180,6 +239,10 @@ var Concordian = Concordian || {
     s3DefaultPolicyDocument: '{"Statement":[{"Action":"s3:*","Effect":"Allow","Resource":["arn:aws:s3:::[$$BUCKET$$]","arn:aws:s3:::[$$BUCKET$$]/*"]}]}',
     s3DefaultPolicyName: "ConcordianBucketWrite",
     s3CredentialsFile: "",
+    s3BucketPrefixOutlines: "opml/",
+    elEditorContainer: $('#divEditOutline'),
+    currentFileName: null,
+    currentTitle: null,
     _fileS3Config: "config.json"
 };
 Concordian.directoryUserHome = Concordian.getUserHome();
@@ -213,19 +276,21 @@ try {
 
 
 //Toolbar button handlers
-$('#btnFileOpen').click(function() { if(!Concordian.online) { $('#open').trigger('click') } else { Concordian.s3OpenFileDialog(); } });
-$('#btnFileSave').click(function() { $('#save').trigger('click') });
-$('#btnFileNew').click( function() {
-    //Blow away the current outline
-    var divEditor = $('#divEditOutline');
-    divEditor.remove();
-    generateOutlineStructure('.content', function() {
-        opXmlToOutline(initialOpmltext);
-        currentFilePath = "./outline.opml";
-        currentTitle = "Untitled Outline";
-    });
-    updateOutlineTitle();
+$('#btnFileOpen').click(function () {
+    if (!Concordian.online) {
+        $('#open').trigger('click')
+    } else {
+        Concordian.s3OpenFileDialog()
+    }
 });
+$('#btnFileSave').click(function () {
+    if (!Concordian.online) {
+        $('#save').trigger('click')
+    } else {
+        Concordian.s3SaveFile()
+    }
+});
+$('#btnFileNew').click(Concordian.newOutline());
 
 
 //File opening handler
@@ -274,7 +339,7 @@ var openHandler = function () {
             $('.divOutlineTitle input.title').attr('value', titleOfOutline);
 
             //Refresh the outline title
-            updateOutlineTitle();
+            Concordian.updateOutlineTitle();
         });
     }
 };
@@ -291,7 +356,7 @@ var saveHandler = function () {
     var fileToSave = $(this).val();
 
     //Refresh the outline title
-    updateOutlineTitle();
+    Concordian.updateOutlineTitle();
 
     //Get the outline data and save as a file
     var opmlToSave = opOutlineToXml();
@@ -320,34 +385,12 @@ function generateOutlineStructure(el, callback) {
         clearTimeout(timerChangeTitle);
         timerChangeTitle = setTimeout(function () {
             //Refresh the outline title
-            return updateOutlineTitle();
+            return Concordian.updateOutlineTitle();
         }, 2000);
     });
 
     if( typeof callback === "function" ) {
         callback();
-    }
-
-    return true;
-}
-
-
-//Ensure the title the user typed is consistent across the global namespace and within the concord object
-function updateOutlineTitle(callback) {
-    var title = "";
-
-    //Get the current title in the text box
-    title = $('input.title').val();
-    currentTitle = title;
-
-    //Update the window caption
-    win.title = Concordian.appName + ' - ' + title;
-
-    //Set the title within the concord object
-    opSetTitle(title);
-
-    if( typeof callback === "function") {
-        callback(title);
     }
 
     return true;
