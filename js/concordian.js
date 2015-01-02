@@ -60,6 +60,44 @@ var Concordian = Concordian || {
     getUserHome: function() {
         return process.env[(process.platform == 'win32') ? 'USERPROFILE' : 'HOME'];
     },
+    openOutlineFromXml: function(data) {
+        var divEditor = $('#divEditOutline');
+        var outliner = $('#outliner');
+        var title = "";
+
+        //Blow away the current outline
+        divEditor.remove();
+
+        //Build a new outline structure
+        generateOutlineStructure('.content');
+
+        //Load up concord
+        outliner.concord({
+            "prefs": {
+                "outlineFont": "Calibri",
+                "outlineFontSize": 18,
+                "outlineLineHeight": 24,
+                "renderMode": false,
+                "readonly": false,
+                "typeIcons": appTypeIcons
+            }
+        });
+        opXmlToOutline(data);
+        //console.log(data);
+
+        //Get the title
+        titleOfOutline = opGetTitle();
+
+        //Globalize
+        currentFilePath = "s3file";
+        currentTitle = titleOfOutline;
+
+        //Set the title
+        $('.divOutlineTitle input.title').attr('value', titleOfOutline);
+
+        //Refresh the outline title
+        Concordian.updateOutlineTitle();
+    },
     s3CreateCredentialsFile: function(showerror) {
         //Do we want the bad login warning to be present?
         if( showerror ) {
@@ -166,14 +204,46 @@ var Concordian = Concordian || {
         });
     },
     s3OpenFileDialog: function(callback) {
-        $('.s3open').modal('show');
         $('.s3open .modal-header .close').unbind('click').click(function () {
             $('.s3open').modal('hide');
         });
+        //Clear the existing table
+        $('.s3open .modal-body .filetable').empty();
         //Get a list of recent opml files and show them in the dialog
         Concordian.s3.listObjects({Bucket: AWS.config.credentials.ccbucket, Prefix: Concordian.s3BucketPrefixOutlines}, function (err, data) {
+            //Populate the table in the modal body
+            for( var i = 0 ; i < data.Contents.length ; i++ ) {
+                var key = data.Contents[i].Key;
+                //Don't list the subfolder itself
+                if( key === Concordian.s3BucketPrefixOutlines ) {
+                    continue;
+                }
+                //Add each key as a hyperlink and bind an open handler to it
+                Concordian.s3.headObject({Bucket:AWS.config.credentials.ccbucket, Key:key}, function ( err, data) {
+                    var filekey = key;
+                    $('.s3open .modal-body .filetable').append('<tr><td><a href="#" id="fileopen'+i+'" data-key="'+filekey+'">' + data.Metadata.opmltitle + '</a></td></tr>');
+                    $('.s3open .modal-body .filetable tr td a#fileopen'+i).unbind('click').click(function() {
+                        var keytoget = $(this).attr('data-key');
+                        console.log(keytoget);
 
+                        //Get the file contents from s3
+                        Concordian.streamData = "";
+                        Concordian.s3.getObject({ Bucket: AWS.config.credentials.ccbucket, Key: keytoget }).on('httpData', function(chunk) {
+                            Concordian.streamData += chunk;
+                        }).on('complete', function() {
+                            Concordian.openOutlineFromXml(Concordian.streamData);
+                            $('.s3open').modal('hide');
+                        }).send();
+                    });
+                });
+            }
+            //If we got no data back then add a message
+            if( data.Contents.length === 0 ) {
+                $('.s3open .modal-body .filetable').append('<tr><td>No outlines found.</td></tr>');
+            }
         });
+        //Show the modal
+        $('.s3open').modal('show');
     },
     s3SaveFile: function (callback) {
         //Sync the title
@@ -182,10 +252,11 @@ var Concordian = Concordian || {
             return false;
         }
         //If we had a good title, save the file
-        var opmlFilename = JSON.stringify(opGetTitle()).replace(/\W/g, '');
+        var opmlTitle = opGetTitle();
+        var opmlFilename = JSON.stringify(opmlTitle).replace(/\W/g, '');
         var opmlToSave = opOutlineToXml();
         var prevmsg = Concordian.changeStatusMessage("Saving to S3...", true);
-        Concordian.s3.putObject({Key: Concordian.s3BucketPrefixOutlines + opmlFilename, Body: opmlToSave}, function () {
+        Concordian.s3.putObject({Key: Concordian.s3BucketPrefixOutlines + opmlFilename, Body: opmlToSave, Metadata: { "opmlTitle":opmlTitle}}, function () {
             Concordian.changeStatusMessage(prevmsg, false);
         });
     },
@@ -235,12 +306,14 @@ var Concordian = Concordian || {
     online: false,
     directoryUserHome: "",
     s3: null,
+    streamData: "",
     s3DefaultUsername: "concordian-default",
     s3DefaultPolicyDocument: '{"Statement":[{"Action":"s3:*","Effect":"Allow","Resource":["arn:aws:s3:::[$$BUCKET$$]","arn:aws:s3:::[$$BUCKET$$]/*"]}]}',
     s3DefaultPolicyName: "ConcordianBucketWrite",
     s3CredentialsFile: "",
     s3BucketPrefixOutlines: "opml/",
     elEditorContainer: $('#divEditOutline'),
+    elOutliner: $('#outliner'),
     currentFileName: null,
     currentTitle: null,
     _fileS3Config: "config.json"
